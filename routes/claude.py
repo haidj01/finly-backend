@@ -49,7 +49,7 @@ async def chat(req: ChatRequest):
     async with httpx.AsyncClient(timeout=60) as client:
         res = await client.post(CLAUDE_API_URL, headers=_headers(), json=body)
     if res.status_code != 200:
-        raise HTTPException(status_code=res.status_code, detail=res.json())
+        raise HTTPException(status_code=502, detail=res.json())
     return res.json()
 
 
@@ -76,7 +76,7 @@ async def get_signals(req: SignalsRequest):
     if res.status_code != 200:
         err = res.json()
         msg = err.get("error", {}).get("message") or str(err)
-        raise HTTPException(status_code=res.status_code, detail=msg)
+        raise HTTPException(status_code=502, detail=msg)
 
     data = res.json()
     text = next((b["text"] for b in data.get("content", []) if b["type"] == "text"), "[]")
@@ -106,5 +106,5 @@ async def search_ticker(req: TickerRequest):
     async with httpx.AsyncClient(timeout=30) as client:
         res = await client.post(CLAUDE_API_URL, headers=_headers(), json=body)
     if res.status_code != 200:
-        raise HTTPException(status_code=res.status_code, detail=res.json())
+        raise HTTPException(status_code=502, detail=res.json())
     return res.json()

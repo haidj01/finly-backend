@@ -66,6 +66,7 @@ TOTP_SECRET=$(aws ssm get-parameter --name "/finly/TOTP_SECRET" --with-decryptio
 
 # ── Docker Compose 설정 ───────────────────────────────────
 mkdir -p /opt/finly
+mkdir -p /opt/finly/agent-data
 
 aws ecr get-login-password --region "$AWS_REGION" | \
   docker login --username AWS --password-stdin "$ECR_REGISTRY"
@@ -114,10 +115,13 @@ services:
     restart: unless-stopped
     ports:
       - "8001:8001"
+    volumes:
+      - /opt/finly/agent-data:/data
     depends_on:
       postgres:
         condition: service_healthy
     environment:
+      - DB_PATH=/data/finly_agent.db
       - DATABASE_URL=postgresql://finly:$DB_PASSWORD@postgres:5432/finly
       - CLAUDE_API_KEY=$CLAUDE_API_KEY
       - ALPACA_API_KEY=$ALPACA_API_KEY
