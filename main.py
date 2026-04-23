@@ -1,5 +1,6 @@
 import os
 import pathlib
+import httpx
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -68,7 +69,17 @@ def health():
     return {"status": "ok"}
 
 
+_AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
+
+
 @app.get("/version")
-def version():
+async def version():
     v = (pathlib.Path(__file__).parent / "version.txt").read_text().strip()
-    return {"service": "finly-backend", "version": v}
+    agent_version = "N/A"
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f"{_AGENT_URL}/version", timeout=2.0)
+            agent_version = r.json().get("version", "N/A")
+    except Exception:
+        pass
+    return {"service": "finly-backend", "version": v, "agent_version": agent_version}
