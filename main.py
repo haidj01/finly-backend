@@ -27,7 +27,7 @@ app.add_middleware(
 _JWT_SECRET = os.environ.get("JWT_SECRET", "change-this-secret-in-production")
 _PUBLIC_PATHS = {
     "/health",
-    "/version",
+    "/api/version",
     "/api/auth/login",
     "/api/auth/mfa/verify",
     "/api/auth/mfa/setup",
@@ -72,7 +72,7 @@ def health():
 _AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
 
 
-@app.get("/version")
+@app.get("/api/version")
 async def version():
     v = (pathlib.Path(__file__).parent / "version.txt").read_text().strip()
     agent_version = "N/A"
