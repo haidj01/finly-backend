@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/haidj01/finly-backend/compare/v0.2.0...v0.3.0) (2026-04-23)
+
+
+### Features
+
+* add stock detail API endpoints and strategy proxy routes ([ae3db2e](https://github.com/haidj01/finly-backend/commit/ae3db2e9593fc142a53859411d1b22f9b4013197))
+* stock detail API endpoints and strategy proxy routes ([0291ca9](https://github.com/haidj01/finly-backend/commit/0291ca9f6cfeec1990d2de9fb39181d0ba88e10e))
+
+
+### Bug Fixes
+
+* add AGENT_URL to docker-compose template in userdata.sh ([8fd5070](https://github.com/haidj01/finly-backend/commit/8fd5070e721614e765789f386420cbe3cf4a5e52))
+* change /version to /api/version for CloudFront routing ([d8f7cef](https://github.com/haidj01/finly-backend/commit/d8f7cef0707d50fad00abb5c85e99e144ae27f0b))
+* proxy agent version through backend /version endpoint ([670af41](https://github.com/haidj01/finly-backend/commit/670af4107e1f79650994741ae91c4447621f539d))
+
 ## [0.2.0](https://github.com/haidj01/finly-backend/compare/v0.1.0...v0.2.0) (2026-04-23)
 
 
