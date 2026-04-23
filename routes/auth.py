@@ -42,8 +42,8 @@ def _make_token(data: dict, expire_minutes: int) -> str:
 def decode_access_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
-    except JWTError:
-        raise HTTPException(status_code=401, detail="인증 토큰이 유효하지 않습니다.")
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="인증 토큰이 유효하지 않습니다.") from exc
     if payload.get("type") != "access":
         raise HTTPException(status_code=401, detail="Invalid token type")
     return payload
@@ -70,8 +70,8 @@ def mfa_verify(req: MFAVerifyRequest):
 
     try:
         payload = jwt.decode(req.temp_token, JWT_SECRET, algorithms=[ALGORITHM])
-    except JWTError:
-        raise HTTPException(status_code=401, detail="임시 토큰이 만료되었거나 유효하지 않습니다.")
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="임시 토큰이 만료되었거나 유효하지 않습니다.") from exc
 
     if payload.get("type") != "temp":
         raise HTTPException(status_code=401, detail="Invalid token type")

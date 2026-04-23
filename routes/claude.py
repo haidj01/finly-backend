@@ -1,4 +1,7 @@
+import json
 import os
+import re
+
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -78,7 +81,6 @@ async def get_signals(req: SignalsRequest):
     data = res.json()
     text = next((b["text"] for b in data.get("content", []) if b["type"] == "text"), "[]")
 
-    import json, re
     match = re.search(r"\[.*\]", text, re.DOTALL)
     try:
         signals = json.loads(match.group() if match else "[]")
