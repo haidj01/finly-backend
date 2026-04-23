@@ -63,6 +63,36 @@ async def get_asset(sym: str):
     return res.json()
 
 
+@router.get("/snapshot/{sym}")
+async def get_snapshot(sym: str):
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.get(
+            f"{DATA}/v2/stocks/snapshots",
+            params={"symbols": sym.upper(), "feed": "iex"},
+            headers=_headers(),
+        )
+    if res.status_code != 200:
+        raise HTTPException(status_code=res.status_code, detail=res.text)
+    snap = res.json().get(sym.upper())
+    if not snap:
+        raise HTTPException(status_code=404, detail=f"{sym} 스냅샷 없음")
+    return snap
+
+
+@router.get("/bars/{sym}")
+async def get_bars(sym: str, timeframe: str = "1Day", limit: int = 60):
+    async with httpx.AsyncClient(timeout=15) as client:
+        res = await client.get(
+            f"{DATA}/v2/stocks/bars",
+            params={"symbols": sym.upper(), "timeframe": timeframe,
+                    "limit": limit, "feed": "iex", "adjustment": "raw"},
+            headers=_headers(),
+        )
+    if res.status_code != 200:
+        raise HTTPException(status_code=res.status_code, detail=res.text)
+    return res.json().get("bars", {}).get(sym.upper(), [])
+
+
 class OrderRequest(BaseModel):
     symbol: str
     qty: int
