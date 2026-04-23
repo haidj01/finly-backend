@@ -27,29 +27,75 @@ def _claude_headers():
     }
 
 
+async def _fetch_snapshots(symbols: list[str]) -> dict[str, dict]:
+    """티커 목록의 snapshot(가격/등락률) 조회 → {sym: {price, change, percent_change}}"""
+    if not symbols:
+        return {}
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            res = await client.get(
+                f"{DATA}/v2/stocks/snapshots",
+                params={"symbols": ",".join(symbols)},
+                headers=_alpaca_headers(),
+            )
+        if res.status_code != 200:
+            print(f"[Alpaca snapshots] {res.status_code}: {res.text[:200]}")
+            return {}
+        result = {}
+        for sym, data in res.json().items():
+            daily = data.get("dailyBar", {})
+            o, c = daily.get("o", 0), daily.get("c", 0)
+            change = round(c - o, 4)
+            pct = round((c - o) / o * 100, 2) if o else 0.0
+            result[sym] = {"price": round(c, 2), "change": change, "percent_change": pct}
+        return result
+    except Exception as e:
+        print(f"[Alpaca snapshots] 예외: {e}")
+        return {}
+
+
 async def _fetch_most_actives(top: int = 8) -> list[dict]:
-    async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(
-            f"{DATA}/v2/screener/stocks/most-actives",
-            params={"by": "volume", "top": top},
-            headers=_alpaca_headers(),
-        )
-    if res.status_code != 200:
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            res = await client.get(
+                f"{DATA}/v1beta1/screener/stocks/most-actives",
+                params={"by": "volume", "top": top},
+                headers=_alpaca_headers(),
+            )
+        if res.status_code != 200:
+            print(f"[Alpaca most-actives] {res.status_code}: {res.text[:200]}")
+            return []
+        actives = res.json().get("most_actives", [])
+    except Exception as e:
+        print(f"[Alpaca most-actives] 예외: {e}")
         return []
-    return res.json().get("most_actives", [])
+
+    syms = [s["symbol"] for s in actives]
+    snapshots = await _fetch_snapshots(syms)
+    for s in actives:
+        snap = snapshots.get(s["symbol"], {})
+        s["price"]           = snap.get("price", 0)
+        s["change"]          = snap.get("change", 0)
+        s["percent_change"]  = snap.get("percent_change", 0)
+    return actives
 
 
 async def _fetch_movers(top: int = 5) -> tuple[list[dict], list[dict]]:
-    async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(
-            f"{DATA}/v2/screener/stocks/top-movers",
-            params={"market_type": "stocks", "top": top},
-            headers=_alpaca_headers(),
-        )
-    if res.status_code != 200:
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            res = await client.get(
+                f"{DATA}/v1beta1/screener/stocks/movers",
+                params={"top": top},
+                headers=_alpaca_headers(),
+            )
+        if res.status_code != 200:
+            print(f"[Alpaca top-movers] {res.status_code}: {res.text[:200]}")
+            return [], []
+        data = res.json()
+        return data.get("gainers", []), data.get("losers", [])
+    except Exception as e:
+        print(f"[Alpaca top-movers] 예외: {e}")
         return [], []
-    data = res.json()
-    return data.get("gainers", []), data.get("losers", [])
 
 
 async def _analyze(stocks: list[dict]) -> dict[str, str]:
