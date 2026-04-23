@@ -107,6 +107,7 @@ services:
       - ADMIN_USERNAME=$ADMIN_USERNAME
       - ADMIN_PASSWORD_HASH=$ADMIN_PASSWORD_HASH
       - TOTP_SECRET=$TOTP_SECRET
+      - AGENT_URL=http://finly-agent:8001
 
   finly-agent:
     image: $AGENT_IMAGE
