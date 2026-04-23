@@ -97,7 +97,10 @@ async def search_ticker(req: TickerRequest):
         "max_tokens": 200,
         "messages": [{
             "role": "user",
-            "content": f'"{req.query}"와 관련된 미국 상장 주식 티커를 최대 5개 찾아줘. JSON 배열만 반환해. 형식: [{{"sym":"AAPL","name":"Apple Inc."}},...] '
+            "content": (
+                f'"{req.query}"와 관련된 미국 상장 주식 티커를 최대 5개 찾아줘. '
+                'JSON 배열만 반환해. 형식: [{"sym":"AAPL","name":"Apple Inc."},...]'
+            )
         }],
     }
     async with httpx.AsyncClient(timeout=30) as client:

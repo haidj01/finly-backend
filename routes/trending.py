@@ -3,7 +3,7 @@ import json
 import re
 import asyncio
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/trending")
 

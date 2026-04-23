@@ -7,7 +7,9 @@ disable =
     missing-class-docstring,
     missing-function-docstring,
     too-few-public-methods,
-    duplicate-code
+    duplicate-code,
+    wrong-import-position,
+    broad-exception-caught
 
 [FORMAT]
 max-line-length = 120
