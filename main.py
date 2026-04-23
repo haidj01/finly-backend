@@ -1,4 +1,5 @@
 import os
+import pathlib
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -25,6 +26,7 @@ app.add_middleware(
 _JWT_SECRET = os.environ.get("JWT_SECRET", "change-this-secret-in-production")
 _PUBLIC_PATHS = {
     "/health",
+    "/version",
     "/api/auth/login",
     "/api/auth/mfa/verify",
     "/api/auth/mfa/setup",
@@ -64,3 +66,9 @@ app.include_router(trending_router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/version")
+def version():
+    v = (pathlib.Path(__file__).parent / "version.txt").read_text().strip()
+    return {"service": "finly-backend", "version": v}
