@@ -196,6 +196,77 @@ Alpaca 스크리너에서 거래량 상위 8개(`actives`), 상승 상위 5개(`
 
 ---
 
+## AWS 배포 (EC2 단일 인스턴스)
+
+### 사전 준비
+
+#### 1. AWS EC2 Key Pair 생성
+
+AWS 콘솔에서 EC2 접속용 Key Pair를 생성합니다.
+
+1. [AWS 콘솔 → EC2 → Network & Security → Key Pairs](https://console.aws.amazon.com/ec2/#KeyPairs) 접속
+2. **Create key pair** 클릭
+3. 설정:
+   - **Name**: `finly-key`
+   - **Key pair type**: RSA
+   - **Private key file format**: `.pem` (Mac/Linux)
+4. **Create key pair** 클릭 → `finly-key.pem` 자동 다운로드
+5. PEM 파일 권한 설정:
+   ```bash
+   mv ~/Downloads/finly-key.pem ~/.ssh/finly-key.pem
+   chmod 400 ~/.ssh/finly-key.pem
+   ```
+
+#### 2. 환경변수 설정
+
+```bash
+export KEY_FILE=~/.ssh/finly-key.pem    # PEM 파일 경로
+export EC2_KEY_NAME=finly-key            # AWS Key Pair 이름
+export CLAUDE_API_KEY=sk-ant-...
+export ALPACA_API_KEY=...
+export ALPACA_API_SECRET=...
+```
+
+### 전체 배포 (최초 1회)
+
+```bash
+cd /path/to/workspace   # finly, finly-backend, finly-agent가 있는 상위 디렉터리
+./finly_deploy.sh --ec2-all
+```
+
+순서대로 실행됩니다:
+1. **bootstrap** — Terraform 상태 저장용 S3 버킷 + DynamoDB 생성
+2. **ec2 infra** — EC2 인스턴스, Elastic IP, ECR, SSM 시크릿 생성
+3. **ec2 apps** — Docker 이미지 빌드 → ECR push → SSH → `docker-compose up`
+4. **frontend** — `npm build` → S3 업로드 → CloudFront 캐시 무효화
+
+### 코드 변경 후 재배포
+
+```bash
+# 앱 + 프론트엔드 동시 재배포
+./finly_deploy.sh --ec2-redeploy
+
+# 앱만 재배포
+./finly_deploy.sh --ec2-apps
+
+# 프론트엔드만 재배포
+./finly_deploy.sh --frontend
+```
+
+### Terraform 구조
+
+```
+finly-backend/terraform/
+├── ec2/          ← EC2 단일 인스턴스 (현재 사용)
+│   ├── main.tf   EC2, Elastic IP, ECR, Security Group
+│   ├── iam.tf    Instance Profile (SSM + ECR 권한)
+│   ├── ssm.tf    SSM Parameter Store (API 키 저장)
+│   └── userdata.sh  Docker + nginx + 앱 자동 설치
+└── (ECS 버전)    향후 확장 시 사용
+```
+
+---
+
 ## 개발 참고사항
 
 - 자동 API 문서: `http://localhost:8000/docs` (Swagger UI)

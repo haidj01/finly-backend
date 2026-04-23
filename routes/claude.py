@@ -1,4 +1,7 @@
+import json
 import os
+import re
+
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -78,7 +81,6 @@ async def get_signals(req: SignalsRequest):
     data = res.json()
     text = next((b["text"] for b in data.get("content", []) if b["type"] == "text"), "[]")
 
-    import json, re
     match = re.search(r"\[.*\]", text, re.DOTALL)
     try:
         signals = json.loads(match.group() if match else "[]")
@@ -95,7 +97,10 @@ async def search_ticker(req: TickerRequest):
         "max_tokens": 200,
         "messages": [{
             "role": "user",
-            "content": f'"{req.query}"와 관련된 미국 상장 주식 티커를 최대 5개 찾아줘. JSON 배열만 반환해. 형식: [{{"sym":"AAPL","name":"Apple Inc."}},...] '
+            "content": (
+                f'"{req.query}"와 관련된 미국 상장 주식 티커를 최대 5개 찾아줘. '
+                'JSON 배열만 반환해. 형식: [{"sym":"AAPL","name":"Apple Inc."},...]'
+            )
         }],
     }
     async with httpx.AsyncClient(timeout=30) as client:
