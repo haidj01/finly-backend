@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/haidj01/finly-backend/compare/v0.3.0...v0.3.1) (2026-04-29)
+
+
+### Bug Fixes
+
+* improve trending API reliability and performance ([2020402](https://github.com/haidj01/finly-backend/commit/2020402c99a49acadf1886910fb78751618fa0d5))
+* translate Claude API error status codes to 502 ([ca0f570](https://github.com/haidj01/finly-backend/commit/ca0f5701ad6a192a9dc35ace619b9c7ebdd7cca7))
+* trending API reliability and performance improvements ([c2e22ef](https://github.com/haidj01/finly-backend/commit/c2e22efc0287cf52c91f561dbc88915711613422))
+
 ## [0.3.0](https://github.com/haidj01/finly-backend/compare/v0.2.0...v0.3.0) (2026-04-23)
 
 
