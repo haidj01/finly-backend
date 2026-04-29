@@ -44,7 +44,15 @@ def _claude_headers():
 
 
 async def _fetch_snapshots(symbols: list[str]) -> dict[str, dict]:
-    """티커 목록의 snapshot(가격/등락률) 조회 → {sym: {price, change, percent_change}}"""
+    """
+    티커 목록의 snapshot(가격/등락률) 조회 → {sym: {price, change, percent_change}}
+
+    가격 산정 우선순위:
+    - 장중(09:30~16:00 ET): latestTrade.p > minuteBar.c > dailyBar.c
+    - 장외: dailyBar.c > latestTrade.p
+
+    등락률: 항상 prevDailyBar.c(전일 종가) 기준으로 계산
+    """
     if not symbols:
         return {}
     try:
@@ -57,13 +65,44 @@ async def _fetch_snapshots(symbols: list[str]) -> dict[str, dict]:
         if res.status_code != 200:
             print(f"[Alpaca snapshots] {res.status_code}: {res.text[:200]}")
             return {}
+
         result = {}
+        is_market_open = _is_market_open()
+
         for sym, data in res.json().items():
-            daily = data.get("dailyBar", {})
-            o, c = daily.get("o", 0), daily.get("c", 0)
-            change = round(c - o, 4)
-            pct = round((c - o) / o * 100, 2) if o else 0.0
-            result[sym] = {"price": round(c, 2), "change": change, "percent_change": pct}
+            # 가격 결정: 장중/장외 우선순위에 따라 결정
+            price = 0.0
+            if is_market_open:
+                # 장중: latestTrade.p > minuteBar.c > dailyBar.c
+                latest_trade = data.get("latestTrade", {})
+                if latest_trade.get("p"):
+                    price = latest_trade.get("p", 0)
+                else:
+                    minute_bar = data.get("minuteBar", {})
+                    if minute_bar.get("c"):
+                        price = minute_bar.get("c", 0)
+                    else:
+                        daily_bar = data.get("dailyBar", {})
+                        price = daily_bar.get("c", 0)
+            else:
+                # 장외: dailyBar.c > latestTrade.p
+                daily_bar = data.get("dailyBar", {})
+                if daily_bar.get("c"):
+                    price = daily_bar.get("c", 0)
+                else:
+                    latest_trade = data.get("latestTrade", {})
+                    price = latest_trade.get("p", 0)
+
+            # 등락률 계산: 전일 종가 기준 (prevDailyBar.c)
+            prev_close = data.get("prevDailyBar", {}).get("c", 0)
+            change = round(price - prev_close, 4) if prev_close else 0.0
+            pct = round((price - prev_close) / prev_close * 100, 2) if prev_close else 0.0
+
+            result[sym] = {
+                "price": round(price, 2),
+                "change": change,
+                "percent_change": pct,
+            }
         return result
     except Exception as e:
         print(f"[Alpaca snapshots] 예외: {e}")
