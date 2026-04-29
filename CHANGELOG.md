@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/haidj01/finly-backend/compare/v0.3.1...v0.4.0) (2026-04-29)
+
+
+### Features
+
+* **trending:** add fundamentals data (PE, analyst, growth, grade) to stock analysis ([515e711](https://github.com/haidj01/finly-backend/commit/515e711ad6a39fa5c7b0304e10a91d8ff81fe161))
+* **trending:** fundamentals data + market-aware cache + penny stock filter ([bb42a98](https://github.com/haidj01/finly-backend/commit/bb42a9810d0eceb7f4f9f363405b928defd3a525))
+* 주목종목 가격을 실시간 latestTrade 기준으로 전환 ([c532d8f](https://github.com/haidj01/finly-backend/commit/c532d8f738e0d20dbfb70dee3a5ff2699462aa93))
+
+
+### Bug Fixes
+
+* **trending:** fix pylint C0411 wrong-import-order (stdlib before third-party) ([09edc93](https://github.com/haidj01/finly-backend/commit/09edc93edf41b39e0ef27b13462930dd164d23b0))
+
 ## [0.3.1](https://github.com/haidj01/finly-backend/compare/v0.3.0...v0.3.1) (2026-04-29)
 
 
