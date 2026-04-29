@@ -1,11 +1,12 @@
-import os
+import asyncio
 import json
+import os
 import re
 import time
-import asyncio
-import httpx
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+import httpx
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/trending")
