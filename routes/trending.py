@@ -4,15 +4,27 @@ import re
 import time
 import asyncio
 import httpx
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/trending")
 
-DATA           = "https://data.alpaca.markets"
-_CACHE_TTL     = 300  # 5분
-_cache: dict   = {"data": None, "ts": 0}
-CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
-CLAUDE_MODEL   = "claude-sonnet-4-6-20250514"
+DATA              = "https://data.alpaca.markets"
+CLAUDE_API_URL    = "https://api.anthropic.com/v1/messages"
+CLAUDE_MODEL      = "claude-sonnet-4-6-20250514"
+MIN_PRICE         = 5.0   # 페니 스톡 제외 기준
+_CACHE_TTL_OPEN   = 300   # 장중 5분
+_CACHE_TTL_CLOSED = 3600  # 장 마감 1시간
+_cache: dict      = {"data": None, "ts": 0}
+
+
+def _is_market_open() -> bool:
+    now = datetime.now(ZoneInfo("America/New_York"))
+    if now.weekday() >= 5:
+        return False
+    h, m = now.hour, now.minute
+    return (h > 9 or (h == 9 and m >= 30)) and h < 16
 
 
 def _alpaca_headers():
@@ -101,17 +113,34 @@ async def _fetch_movers(top: int = 5) -> tuple[list[dict], list[dict]]:
         return [], []
 
 
-async def _analyze(stocks: list[dict]) -> dict[str, str]:
-    """티커 목록을 Claude web_search로 분석 → {sym: reason} 반환"""
+async def _analyze(stocks: list[dict]) -> dict[str, dict]:
+    """티커 목록을 Claude web_search로 분석 → {sym: {reason, pe, analyst, growth, grade}} 반환"""
     if not stocks:
         return {}
 
-    syms = ", ".join(s["symbol"] for s in stocks)
+    stock_lines = "\n".join(
+        f"- {s['symbol']}: ${s.get('price', 0):.2f}, "
+        f"{'+' if s.get('percent_change', 0) >= 0 else ''}{s.get('percent_change', 0):.2f}%, "
+        f"거래량 {int(s.get('volume', 0)):,}"
+        for s in stocks
+    )
     prompt = (
-        f"오늘 미국 주식시장에서 주목받는 다음 종목들을 웹검색으로 조사하고, "
-        f"각 종목이 왜 주목받는지 한국어로 한 줄(30자 이내)로 설명해줘: {syms}\n\n"
-        "JSON 객체만 반환해. 다른 텍스트 없이.\n"
-        '형식: {"AAPL": "이유", "NVDA": "이유"}'
+        f"오늘 미국 주식시장 주목 종목 데이터입니다:\n{stock_lines}\n\n"
+        "각 종목을 웹검색으로 조사해서 아래 JSON 형식으로만 반환해. 다른 텍스트 없이.\n\n"
+        "{\n"
+        '  "TICKER": {\n'
+        '    "reason": "오늘 주목받는 핵심 이유 (30자 이내, 한국어)",\n'
+        '    "pe": 28.5,\n'
+        '    "analyst": "매수",\n'
+        '    "growth": "+12%",\n'
+        '    "grade": "B"\n'
+        "  }\n"
+        "}\n\n"
+        "필드 설명:\n"
+        "- pe: 현재 PER 숫자 (없으면 null)\n"
+        "- analyst: 애널리스트 컨센서스 매수/중립/매도 (없으면 null)\n"
+        "- growth: 최근 분기 매출 또는 EPS 성장률 예: +12% (없으면 null)\n"
+        "- grade: 펀더멘털 종합 평가 A(우수)/B(양호)/C(보통)/D(취약) (필수)"
     )
     body = {
         "model":   CLAUDE_MODEL,
@@ -134,28 +163,41 @@ async def _analyze(stocks: list[dict]) -> dict[str, str]:
 
 
 def _normalize(raw: dict, category: str, reason_map: dict) -> dict:
-    sym = raw.get("symbol", "")
+    sym  = raw.get("symbol", "")
+    info = reason_map.get(sym) or {}
+    if not isinstance(info, dict):
+        info = {"reason": str(info)}
     return {
-        "sym":     sym,
-        "price":   round(float(raw.get("price", 0)), 2),
-        "change":  round(float(raw.get("change", 0)), 2),
-        "chg_pct": round(float(raw.get("percent_change", 0)), 2),
-        "volume":  int(raw.get("volume", 0)),
+        "sym":      sym,
+        "price":    round(float(raw.get("price", 0)), 2),
+        "change":   round(float(raw.get("change", 0)), 2),
+        "chg_pct":  round(float(raw.get("percent_change", 0)), 2),
+        "volume":   int(raw.get("volume", 0)),
         "category": category,
-        "reason":  reason_map.get(sym, ""),
+        "reason":   info.get("reason", ""),
+        "pe":       info.get("pe"),
+        "analyst":  info.get("analyst"),
+        "growth":   info.get("growth"),
+        "grade":    info.get("grade"),
     }
 
 
 @router.get("")
 async def get_trending():
     now = time.time()
-    if _cache["data"] and now - _cache["ts"] < _CACHE_TTL:
+    ttl = _CACHE_TTL_OPEN if _is_market_open() else _CACHE_TTL_CLOSED
+    if _cache["data"] and now - _cache["ts"] < ttl:
         return _cache["data"]
 
     actives_raw, (gainers_raw, losers_raw) = await asyncio.gather(
         _fetch_most_actives(8),
         _fetch_movers(5),
     )
+
+    # 페니 스톡 제외 ($5 미만)
+    actives_raw = [s for s in actives_raw if s.get("price", 0) >= MIN_PRICE]
+    gainers_raw = [s for s in gainers_raw if s.get("price", 0) >= MIN_PRICE]
+    losers_raw  = [s for s in losers_raw  if s.get("price", 0) >= MIN_PRICE]
 
     # actives에 이미 포함된 종목을 gainers/losers에서 제거
     active_syms = {s["symbol"] for s in actives_raw}
