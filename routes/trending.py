@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 import asyncio
 import httpx
 from fastapi import APIRouter
@@ -8,8 +9,10 @@ from fastapi import APIRouter
 router = APIRouter(prefix="/api/trending")
 
 DATA           = "https://data.alpaca.markets"
+_CACHE_TTL     = 300  # 5분
+_cache: dict   = {"data": None, "ts": 0}
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
-CLAUDE_MODEL   = "claude-sonnet-4-20250514"
+CLAUDE_MODEL   = "claude-sonnet-4-6-20250514"
 
 
 def _alpaca_headers():
@@ -112,7 +115,7 @@ async def _analyze(stocks: list[dict]) -> dict[str, str]:
     )
     body = {
         "model":   CLAUDE_MODEL,
-        "max_tokens": 1024,
+        "max_tokens": 2048,
         "tools":   [{"type": "web_search_20250305", "name": "web_search"}],
         "messages": [{"role": "user", "content": prompt}],
     }
@@ -145,17 +148,29 @@ def _normalize(raw: dict, category: str, reason_map: dict) -> dict:
 
 @router.get("")
 async def get_trending():
+    now = time.time()
+    if _cache["data"] and now - _cache["ts"] < _CACHE_TTL:
+        return _cache["data"]
+
     actives_raw, (gainers_raw, losers_raw) = await asyncio.gather(
         _fetch_most_actives(8),
         _fetch_movers(5),
     )
 
-    # 중복 제거 후 Claude 분석 대상 추출 (최대 15개)
+    # actives에 이미 포함된 종목을 gainers/losers에서 제거
+    active_syms = {s["symbol"] for s in actives_raw}
+    gainers_raw = [s for s in gainers_raw if s["symbol"] not in active_syms]
+    losers_raw  = [s for s in losers_raw  if s["symbol"] not in active_syms]
+
+    # Claude 분석 대상 추출 (최대 15개)
     all_stocks = {s["symbol"]: s for s in actives_raw + gainers_raw + losers_raw}
     reason_map = await _analyze(list(all_stocks.values())[:15])
 
-    return {
+    result = {
         "actives": [_normalize(s, "most_active", reason_map) for s in actives_raw],
         "gainers": [_normalize(s, "gainer",      reason_map) for s in gainers_raw],
         "losers":  [_normalize(s, "loser",        reason_map) for s in losers_raw],
     }
+    _cache["data"] = result
+    _cache["ts"]   = now
+    return result
