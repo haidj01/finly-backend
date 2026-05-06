@@ -87,7 +87,11 @@ async def _fetch_snapshots(symbols: list[str]) -> dict[str, dict]:
         for sym, data in res.json().items():
             if is_open:
                 latest_trade = data.get("latestTrade", {})
-                price = latest_trade.get("p") or data.get("minuteBar", {}).get("c") or data.get("dailyBar", {}).get("c", 0)
+                price = (
+                    latest_trade.get("p")
+                    or data.get("minuteBar", {}).get("c")
+                    or data.get("dailyBar", {}).get("c", 0)
+                )
             else:
                 price = data.get("dailyBar", {}).get("c") or data.get("latestTrade", {}).get("p", 0)
 
@@ -305,7 +309,7 @@ def _score_stock(stock: dict, prev_vol_map: dict, fmp_map: dict) -> float:
 
 # ── Step 4: Claude 분석 (실제 FMP 수치 주입) ─────────────────────────────────
 
-async def _analyze(stocks: list[dict], fmp_map: dict) -> dict[str, dict]:
+async def _analyze(stocks: list[dict], fmp_map: dict) -> dict[str, dict]:  # pylint: disable=too-many-locals
     if not stocks:
         return {}
 
@@ -336,7 +340,7 @@ async def _analyze(stocks: list[dict], fmp_map: dict) -> dict[str, dict]:
 
     syms   = ", ".join(s["symbol"] for s in stocks)
     prompt = (
-        f"미국 주식 데이터:\n" + "\n".join(lines) + "\n\n"
+        "미국 주식 데이터:\n" + "\n".join(lines) + "\n\n"
         f"각 종목({syms})을 분석해 JSON으로만 반환. 다른 텍스트 없이.\n"
         '{"SYM":{"reason":"주목이유25자이내한국어","risk":"위험20자이내또는null",'
         '"confidence":2,"analyst":"매수","growth":"+12%EPS(YoY)","buy_pick":true}}\n\n'
@@ -406,7 +410,7 @@ def _normalize(raw: dict, category: str, reason_map: dict, fmp_map: dict) -> dic
 # ── 라우터 ────────────────────────────────────────────────────────────────────
 
 @router.get("")
-async def get_trending():
+async def get_trending():  # pylint: disable=too-many-locals
     now = time.time()
     ttl = _CACHE_TTL_OPEN if _is_market_open() else _CACHE_TTL_CLOSED
     if _cache["data"] and now - _cache["ts"] < ttl:
@@ -462,9 +466,12 @@ async def get_trending():
     gainer_syms    = {s["symbol"] for s in gainers_raw}
     fmp_screener_syms = {s["symbol"] for s in fmp_screener_new}
     def _category(sym: str) -> str:
-        if sym in fmp_screener_syms: return "fmp_pick"
-        if sym in active_syms:       return "most_active"
-        if sym in gainer_syms:       return "gainer"
+        if sym in fmp_screener_syms:
+            return "fmp_pick"
+        if sym in active_syms:
+            return "most_active"
+        if sym in gainer_syms:
+            return "gainer"
         return "loser"
 
     # Step 4: Claude 분석 (실제 FMP 수치 포함)
