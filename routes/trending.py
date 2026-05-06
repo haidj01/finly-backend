@@ -438,6 +438,38 @@ async def _fetch_prev_volumes_massive(symbols: list[str]) -> dict[str, float]:
 # ── Step 3: 스코어링 ──────────────────────────────────────────────────────────
 # vol(35) + chg(25) + liq(10) + fundamental(15) + flow(10) + insider(5) = 100pt
 
+def _calc_fundamental_score(sym: str, fmp_map: dict, price: float) -> float:
+    fmp       = fmp_map.get(sym, {})
+    pe        = fmp.get("pe")
+    sector_pe = _SECTOR_PE.get(fmp.get("sector", ""), 20.0)
+    dcf       = fmp.get("dcf")
+    score = 0.0
+    if pe and pe > 0:
+        if pe < sector_pe * 0.8:
+            score += 11.0
+        elif pe < sector_pe:
+            score += 6.0
+    if dcf and price and dcf > price * 1.10:
+        score += 4.0
+    return score
+
+
+def _calc_flow_score(sym: str, flow_map: dict) -> float:
+    bullish_ratio = flow_map.get(sym, {}).get("bullish_ratio", 0.5)
+    return max(bullish_ratio - 0.5, 0.0) * 20  # 0.5→0pt, 1.0→10pt
+
+
+def _calc_insider_score(sym: str, insider_map: dict) -> float:
+    insider = insider_map.get(sym, {})
+    buys    = insider.get("buys", 0)
+    sells   = insider.get("sells", 0)
+    if buys > 0 and buys >= sells:
+        return 5.0
+    if buys > 0:
+        return 2.0
+    return 0.0
+
+
 def _score_stock(
     stock: dict,
     prev_vol_map: dict,
@@ -451,13 +483,8 @@ def _score_stock(
     price     = float(stock.get("price", 0) or 0)
     chg_pct   = float(stock.get("percent_change", 0) or 0)
 
-    # 거래량 급증 (35pt) — 전일 대비 3배 이상이면 만점
-    if prev_vol > 0:
-        vol_score = min(today_vol / prev_vol / 3.0, 1.0) * 35
-    else:
-        vol_score = 0.0
+    vol_score = min(today_vol / prev_vol / 3.0, 1.0) * 35 if prev_vol > 0 else 0.0
 
-    # 등락률 적정성 (25pt) — 이미 급등한 종목 배제
     if -1 <= chg_pct <= 3:
         chg_score = 25.0
     elif 3 < chg_pct <= 7:
@@ -467,43 +494,46 @@ def _score_stock(
     else:
         chg_score = 0.0
 
-    # 유동성 (10pt)
     liq_score = 10.0 if today_vol * price >= 1_000_000 else 0.0
 
-    # FMP 펀더멘털 (15pt)
-    fmp       = fmp_map.get(sym, {})
-    pe        = fmp.get("pe")
-    sector_pe = _SECTOR_PE.get(fmp.get("sector", ""), 20.0)
-    dcf       = fmp.get("dcf")
-    fundamental_score = 0.0
-    if pe and pe > 0:
-        if pe < sector_pe * 0.8:
-            fundamental_score += 11.0
-        elif pe < sector_pe:
-            fundamental_score += 6.0
-    if dcf and price and dcf > price * 1.10:
-        fundamental_score += 4.0
-
-    # Polygon 옵션 플로우 (10pt) — bullish_ratio 50%~100% → 0~10pt
-    flow          = flow_map.get(sym, {})
-    bullish_ratio = flow.get("bullish_ratio", 0.5)
-    flow_score    = max(bullish_ratio - 0.5, 0.0) * 20  # 0.5→0pt, 1.0→10pt
-
-    # SEC EDGAR 내부자 매수 (5pt)
-    insider      = insider_map.get(sym, {})
-    insider_buys = insider.get("buys", 0)
-    insider_sells = insider.get("sells", 0)
-    if insider_buys > 0 and insider_buys >= insider_sells:
-        insider_score = 5.0
-    elif insider_buys > 0:
-        insider_score = 2.0
-    else:
-        insider_score = 0.0
-
-    return vol_score + chg_score + liq_score + fundamental_score + flow_score + insider_score
+    return (
+        vol_score
+        + chg_score
+        + liq_score
+        + _calc_fundamental_score(sym, fmp_map, price)
+        + _calc_flow_score(sym, flow_map)
+        + _calc_insider_score(sym, insider_map)
+    )
 
 
 # ── Step 4: Claude 분석 ───────────────────────────────────────────────────────
+
+def _build_stock_line(s: dict, fmp_map: dict, news_map: dict) -> str:
+    sym   = s["symbol"]
+    price = s.get("price", 0)
+    chg   = s.get("percent_change", 0)
+    vol   = int(s.get("volume", 0)) // 1000
+    fmp   = fmp_map.get(sym, {})
+
+    pe        = fmp.get("pe")
+    sector    = fmp.get("sector", "")
+    sector_pe = _SECTOR_PE.get(sector)
+    dcf       = fmp.get("dcf")
+
+    pe_str  = f" PE:{pe:.1f}/섹터:{sector_pe}" if pe and sector_pe else ""
+    dcf_str = ""
+    if dcf and price:
+        upside  = (dcf - price) / price * 100
+        dcf_str = f" DCF:${dcf:.0f}({upside:+.0f}%)"
+    sec_str  = f" [{sector}]" if sector else ""
+    news     = news_map.get(sym, [])
+    news_str = f" 뉴스:{news[0][:40]}" if news else ""
+
+    return (
+        f"{sym} ${price:.2f} {'+' if chg >= 0 else ''}{chg:.2f}%"
+        f" 거래량{vol}K{pe_str}{dcf_str}{sec_str}{news_str}"
+    )
+
 
 async def _analyze(
     stocks: list[dict], fmp_map: dict, news_map: dict
@@ -511,34 +541,7 @@ async def _analyze(
     if not stocks:
         return {}
 
-    lines = []
-    for s in stocks:
-        sym   = s["symbol"]
-        price = s.get("price", 0)
-        chg   = s.get("percent_change", 0)
-        vol   = int(s.get("volume", 0)) // 1000
-        fmp   = fmp_map.get(sym, {})
-
-        pe        = fmp.get("pe")
-        sector    = fmp.get("sector", "")
-        sector_pe = _SECTOR_PE.get(sector)
-        dcf       = fmp.get("dcf")
-
-        pe_str  = f" PE:{pe:.1f}/섹터:{sector_pe}" if pe and sector_pe else ""
-        dcf_str = ""
-        if dcf and price:
-            upside = (dcf - price) / price * 100
-            dcf_str = f" DCF:${dcf:.0f}({upside:+.0f}%)"
-        sec_str  = f" [{sector}]" if sector else ""
-
-        # 뉴스 컨텍스트 (최신 헤드라인 1건)
-        news     = news_map.get(sym, [])
-        news_str = f" 뉴스:{news[0][:40]}" if news else ""
-
-        lines.append(
-            f"{sym} ${price:.2f} {'+' if chg >= 0 else ''}{chg:.2f}%"
-            f" 거래량{vol}K{pe_str}{dcf_str}{sec_str}{news_str}"
-        )
+    lines = [_build_stock_line(s, fmp_map, news_map) for s in stocks]
 
     syms   = ", ".join(s["symbol"] for s in stocks)
     prompt = (
@@ -579,9 +582,7 @@ def _normalize(
     category: str,
     reason_map: dict,
     fmp_map: dict,
-    flow_map: dict,
-    insider_map: dict,
-    news_map: dict,
+    ctx: dict,
 ) -> dict:
     sym  = raw.get("symbol", "")
     info = reason_map.get(sym) or {}
@@ -595,9 +596,9 @@ def _normalize(
     dcf       = fmp.get("dcf")
     price     = float(raw.get("price", 0) or 0)
 
-    flow    = flow_map.get(sym, {})
-    insider = insider_map.get(sym, {})
-    news    = news_map.get(sym, [])
+    flow    = ctx["flow"].get(sym, {})
+    insider = ctx["insider"].get(sym, {})
+    news    = ctx["news"].get(sym, [])
 
     return {
         "sym":               sym,
@@ -619,7 +620,7 @@ def _normalize(
         "dcf_upside":        round((dcf - price) / price * 100, 1) if dcf and price else None,
         "mkt_cap":           fmp.get("mktCap"),
         # Polygon 옵션 플로우
-        "has_flow_alert":    sym in flow_map,
+        "has_flow_alert":    sym in ctx["flow"],
         "flow_bullish_ratio": flow.get("bullish_ratio"),
         "call_vol":          flow.get("call_vol"),
         "put_vol":           flow.get("put_vol"),
@@ -711,8 +712,9 @@ async def get_trending():  # pylint: disable=too-many-locals
     # Step 4: Claude 분석 (뉴스 컨텍스트 포함)
     reason_map = await _analyze(top10, fmp_profiles, news_map)
 
+    ctx = {"flow": flow_map, "insider": insider_map, "news": news_map}
     all_normalized = [
-        _normalize(s, _category(s["symbol"]), reason_map, fmp_profiles, flow_map, insider_map, news_map)
+        _normalize(s, _category(s["symbol"]), reason_map, fmp_profiles, ctx)
         for s in top10
     ]
     picks = [s for s in all_normalized if s["buy_pick"]]
