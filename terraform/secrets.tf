@@ -13,3 +13,7 @@ data "aws_secretsmanager_secret" "alpaca_api_key" {
 data "aws_secretsmanager_secret" "alpaca_api_secret" {
   name = "finly/ALPACA_API_SECRET"
 }
+
+data "aws_secretsmanager_secret" "fmp_api_key" {
+  name = "finly/FMP_API_KEY"
+}

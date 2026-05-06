@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta, timezone
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -79,18 +80,27 @@ async def get_snapshot(sym: str):
     return snap
 
 
+_PERIOD_CFG = {
+    "1D": {"timeframe": "1Hour", "days": 3},
+    "1W": {"timeframe": "1Day",  "days": 7},
+    "1M": {"timeframe": "1Day",  "days": 30},
+    "1Y": {"timeframe": "1Day",  "days": 365},
+}
+
 @router.get("/bars/{sym}")
-async def get_bars(sym: str, timeframe: str = "1Day", limit: int = 60):
+async def get_bars(sym: str, period: str = "1M"):
+    cfg = _PERIOD_CFG.get(period, _PERIOD_CFG["1M"])
+    start = (datetime.now(timezone.utc) - timedelta(days=cfg["days"])).strftime("%Y-%m-%d")
     async with httpx.AsyncClient(timeout=15) as client:
         res = await client.get(
-            f"{DATA}/v2/stocks/bars",
-            params={"symbols": sym.upper(), "timeframe": timeframe,
-                    "limit": limit, "feed": "iex", "adjustment": "raw"},
+            f"{DATA}/v2/stocks/{sym.upper()}/bars",
+            params={"timeframe": cfg["timeframe"], "start": start,
+                    "feed": "iex", "adjustment": "raw"},
             headers=_headers(),
         )
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
-    return res.json().get("bars", {}).get(sym.upper(), [])
+    return res.json().get("bars") or []
 
 
 class OrderRequest(BaseModel):

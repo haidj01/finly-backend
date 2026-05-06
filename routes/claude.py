@@ -49,7 +49,9 @@ async def chat(req: ChatRequest):
     async with httpx.AsyncClient(timeout=60) as client:
         res = await client.post(CLAUDE_API_URL, headers=_headers(), json=body)
     if res.status_code != 200:
-        raise HTTPException(status_code=502, detail=res.json())
+        err = res.json()
+        msg = err.get("error", {}).get("message") or f"Claude API 오류 ({res.status_code})"
+        raise HTTPException(status_code=502, detail=msg)
     return res.json()
 
 
@@ -106,5 +108,7 @@ async def search_ticker(req: TickerRequest):
     async with httpx.AsyncClient(timeout=30) as client:
         res = await client.post(CLAUDE_API_URL, headers=_headers(), json=body)
     if res.status_code != 200:
-        raise HTTPException(status_code=502, detail=res.json())
+        err = res.json()
+        msg = err.get("error", {}).get("message") or f"Claude API 오류 ({res.status_code})"
+        raise HTTPException(status_code=502, detail=msg)
     return res.json()
