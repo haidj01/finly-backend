@@ -41,3 +41,13 @@ async def delete_strategy(sid: str):
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
+
+
+@router.get("/trade-history")
+async def get_trade_history(request: Request):
+    params = dict(request.query_params)
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.get(f"{_AGENT_URL}/api/agent/trade-history", params=params)
+    if res.status_code != 200:
+        raise HTTPException(res.status_code, res.text)
+    return res.json()

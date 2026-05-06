@@ -30,6 +30,7 @@ resource "aws_iam_role_policy" "secrets_access" {
         data.aws_secretsmanager_secret.claude_api_key.arn,
         data.aws_secretsmanager_secret.alpaca_api_key.arn,
         data.aws_secretsmanager_secret.alpaca_api_secret.arn,
+        data.aws_secretsmanager_secret.fmp_api_key.arn,
       ]
     }]
   })

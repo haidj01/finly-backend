@@ -183,6 +183,10 @@ resource "aws_ecs_task_definition" "app" {
       {
         name      = "ALPACA_API_SECRET"
         valueFrom = data.aws_secretsmanager_secret.alpaca_api_secret.arn
+      },
+      {
+        name      = "FMP_API_KEY"
+        valueFrom = data.aws_secretsmanager_secret.fmp_api_key.arn
       }
     ]
 
