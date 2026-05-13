@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.0](https://github.com/haidj01/finly-backend/compare/v0.4.0...v0.5.0) (2026-05-13)
+
+
+### Features
+
+* add market regime proxy endpoint ([0a0fa50](https://github.com/haidj01/finly-backend/commit/0a0fa507302d33edcb588a570b3a126a9b764cea))
+* add market regime proxy endpoint ([217574b](https://github.com/haidj01/finly-backend/commit/217574b186bc787828dac1aea4c027a60301335d))
+* enrich trending pipeline with Polygon options flow, FMP news, SEC EDGAR insider trades ([80311de](https://github.com/haidj01/finly-backend/commit/80311de9b5e2608c89221b35dc36c34e4cb2e13e))
+* enrich trending pipeline with Polygon options, FMP news, SEC EDGAR insider trades ([0b74721](https://github.com/haidj01/finly-backend/commit/0b7472107151a040ed5f587ba142e0d72238945d))
+
 ## [0.4.0](https://github.com/haidj01/finly-backend/compare/v0.3.1...v0.4.0) (2026-04-29)
 
 
