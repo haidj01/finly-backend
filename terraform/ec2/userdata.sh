@@ -54,6 +54,11 @@ get_param() {
     --region "$AWS_REGION" --query Parameter.Value --output text
 }
 
+get_secret() {
+  aws secretsmanager get-secret-value --secret-id "$1" \
+    --region "$AWS_REGION" --query SecretString --output text
+}
+
 DB_PASSWORD=$(get_param "/finly/DB_PASSWORD")
 CLAUDE_API_KEY=$(get_param "/finly/CLAUDE_API_KEY")
 ALPACA_API_KEY=$(get_param "/finly/ALPACA_API_KEY")
@@ -63,6 +68,10 @@ ADMIN_USERNAME=$(get_param "/finly/ADMIN_USERNAME")
 ADMIN_PASSWORD_HASH=$(get_param "/finly/ADMIN_PASSWORD_HASH")
 TOTP_SECRET=$(aws ssm get-parameter --name "/finly/TOTP_SECRET" --with-decryption \
   --region "$AWS_REGION" --query Parameter.Value --output text 2>/dev/null || echo "")
+
+ALPACA_LIVE_KEY=$(get_secret "finly/ALPACA_LIVE_KEY")
+ALPACA_LIVE_SECRET=$(get_secret "finly/ALPACA_LIVE_SECRET")
+ALPACA_MODE=$(get_param "/finly/ALPACA_MODE" 2>/dev/null || echo "paper")
 
 # ── Docker Compose 설정 ───────────────────────────────────
 mkdir -p /opt/finly
@@ -122,6 +131,9 @@ services:
       - CLAUDE_API_KEY=$CLAUDE_API_KEY
       - ALPACA_API_KEY=$ALPACA_API_KEY
       - ALPACA_API_SECRET=$ALPACA_API_SECRET
+      - ALPACA_LIVE_KEY=$ALPACA_LIVE_KEY
+      - ALPACA_LIVE_SECRET=$ALPACA_LIVE_SECRET
+      - ALPACA_MODE=$ALPACA_MODE
 
 volumes:
   pgdata:
