@@ -15,6 +15,7 @@ from routes.news      import router as news_router
 from routes.trending  import router as trending_router
 from routes.auth      import router as auth_router
 from routes.strategy  import router as strategy_router
+from routes.market    import router as market_router
 
 app = FastAPI(title="Finly Backend")
 
@@ -64,6 +65,7 @@ app.include_router(alpaca_router)
 app.include_router(news_router)
 app.include_router(trending_router)
 app.include_router(strategy_router)
+app.include_router(market_router)
 
 
 @app.get("/health")
