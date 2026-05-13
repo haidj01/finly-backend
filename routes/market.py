@@ -1,6 +1,6 @@
 import os
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 router = APIRouter(prefix="/api/market")
 _AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
@@ -10,6 +10,25 @@ _AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
 async def get_market_regime():
     async with httpx.AsyncClient(timeout=15) as client:
         res = await client.get(f"{_AGENT_URL}/market/regime")
+    if res.status_code != 200:
+        raise HTTPException(res.status_code, res.text)
+    return res.json()
+
+
+@router.get("/trading-mode")
+async def get_trading_mode():
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.get(f"{_AGENT_URL}/market/trading-mode")
+    if res.status_code != 200:
+        raise HTTPException(res.status_code, res.text)
+    return res.json()
+
+
+@router.put("/trading-mode")
+async def update_trading_mode(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.put(f"{_AGENT_URL}/market/trading-mode", json=body)
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
