@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/haidj01/finly-backend/compare/v0.5.0...v0.6.0) (2026-05-13)
+
+
+### Features
+
+* load Alpaca live keys from Secrets Manager in userdata.sh ([249872d](https://github.com/haidj01/finly-backend/commit/249872d05f997914e23e3a71e84cabd4140768b4))
+* load Alpaca live keys from Secrets Manager in userdata.sh ([abfe43c](https://github.com/haidj01/finly-backend/commit/abfe43c0c7d1f7c3d04cbe82a310356d7dbc1cd1))
+
 ## [0.5.0](https://github.com/haidj01/finly-backend/compare/v0.4.0...v0.5.0) (2026-05-13)
 
 
