@@ -51,3 +51,22 @@ async def get_trade_history(request: Request):
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
+
+
+@router.get("/watchdog/status")
+async def get_watchdog_status():
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.get(f"{_AGENT_URL}/api/agent/watchdog/status")
+    if res.status_code != 200:
+        raise HTTPException(res.status_code, res.text)
+    return res.json()
+
+
+@router.post("/watchdog/config")
+async def update_watchdog_config(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.post(f"{_AGENT_URL}/api/agent/watchdog/config", json=body)
+    if res.status_code != 200:
+        raise HTTPException(res.status_code, res.text)
+    return res.json()
