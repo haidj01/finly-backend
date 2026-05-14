@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/haidj01/finly-backend/compare/v0.7.0...v0.8.0) (2026-05-14)
+
+
+### Features
+
+* add watchdog status and config proxy routes ([cdcc52f](https://github.com/haidj01/finly-backend/commit/cdcc52ffa813aaa277fff62975dc8bd1f4a60d7e))
+* add watchdog status and config proxy routes ([9121e3c](https://github.com/haidj01/finly-backend/commit/9121e3c34c20f0a4a4aae3111ff16a08aaa420a5))
+
 ## [0.7.0](https://github.com/haidj01/finly-backend/compare/v0.6.0...v0.7.0) (2026-05-13)
 
 
