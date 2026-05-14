@@ -1,16 +1,15 @@
 import os
 from datetime import datetime, timedelta, timezone
 import httpx
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request
 
 router = APIRouter(prefix="/api/alpaca")
 
-PAPER = "https://paper-api.alpaca.markets"
-DATA  = "https://data.alpaca.markets"
+_AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
+DATA       = "https://data.alpaca.markets"
 
 
-def _headers():
+def _data_headers():
     return {
         "APCA-API-KEY-ID":     os.environ["ALPACA_API_KEY"],
         "APCA-API-SECRET-KEY": os.environ["ALPACA_API_SECRET"],
@@ -20,7 +19,7 @@ def _headers():
 @router.get("/account")
 async def get_account():
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(f"{PAPER}/v2/account", headers=_headers())
+        res = await client.get(f"{_AGENT_URL}/api/alpaca/account")
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
     return res.json()
@@ -29,7 +28,7 @@ async def get_account():
 @router.get("/positions")
 async def get_positions():
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(f"{PAPER}/v2/positions", headers=_headers())
+        res = await client.get(f"{_AGENT_URL}/api/alpaca/positions")
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
     return res.json()
@@ -41,7 +40,7 @@ async def get_prices(symbols: str):
         res = await client.get(
             f"{DATA}/v2/stocks/trades/latest",
             params={"symbols": symbols, "feed": "iex"},
-            headers=_headers(),
+            headers=_data_headers(),
         )
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
@@ -56,7 +55,7 @@ async def get_prices(symbols: str):
 @router.get("/asset/{sym}")
 async def get_asset(sym: str):
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(f"{DATA}/v2/assets/{sym}", headers=_headers())
+        res = await client.get(f"{DATA}/v2/assets/{sym}", headers=_data_headers())
     if res.status_code == 404:
         return None
     if res.status_code != 200:
@@ -70,7 +69,7 @@ async def get_snapshot(sym: str):
         res = await client.get(
             f"{DATA}/v2/stocks/snapshots",
             params={"symbols": sym.upper(), "feed": "iex"},
-            headers=_headers(),
+            headers=_data_headers(),
         )
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
@@ -96,26 +95,19 @@ async def get_bars(sym: str, period: str = "1M"):
             f"{DATA}/v2/stocks/{sym.upper()}/bars",
             params={"timeframe": cfg["timeframe"], "start": start,
                     "feed": "iex", "adjustment": "raw"},
-            headers=_headers(),
+            headers=_data_headers(),
         )
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
     return res.json().get("bars") or []
 
 
-class OrderRequest(BaseModel):
-    symbol: str
-    qty: int
-    side: str
-
-
 @router.get("/orders")
 async def get_orders(status: str = "all", limit: int = 20):
     async with httpx.AsyncClient(timeout=10) as client:
         res = await client.get(
-            f"{PAPER}/v2/orders",
-            params={"status": status, "limit": limit, "direction": "desc"},
-            headers=_headers(),
+            f"{_AGENT_URL}/api/alpaca/orders",
+            params={"status": status, "limit": limit},
         )
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
@@ -123,22 +115,11 @@ async def get_orders(status: str = "all", limit: int = 20):
 
 
 @router.post("/orders")
-async def place_order(req: OrderRequest):
-    if req.qty < 1 or req.qty > 10000:
-        raise HTTPException(status_code=400, detail="수량은 1~10,000주 사이여야 합니다.")
-    if req.side not in ("buy", "sell"):
-        raise HTTPException(status_code=400, detail="side는 buy 또는 sell이어야 합니다.")
-
-    body = {
-        "symbol": req.symbol,
-        "qty": req.qty,
-        "side": req.side,
-        "type": "market",
-        "time_in_force": "day",
-    }
+async def place_order(request: Request):
+    body = await request.json()
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.post(f"{PAPER}/v2/orders", headers=_headers(), json=body)
+        res = await client.post(f"{_AGENT_URL}/api/alpaca/orders", json=body)
     data = res.json()
-    if res.status_code != 200:
-        raise HTTPException(status_code=res.status_code, detail=data.get("message", "주문 실패"))
+    if res.status_code not in (200, 201):
+        raise HTTPException(status_code=res.status_code, detail=data.get("detail", "주문 실패"))
     return data
