@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/haidj01/finly-backend/compare/v0.9.0...v0.10.0) (2026-05-14)
+
+
+### Features
+
+* market regime + AI recommendations + global trading mode proxy ([6e1f889](https://github.com/haidj01/finly-backend/commit/6e1f88999c7bf8eebda4a06c26f6774792c13551))
+* proxy account/positions/orders through finly-agent for mode awareness ([5654dae](https://github.com/haidj01/finly-backend/commit/5654dae291d44a69f50d0b8e5d23b3bf2445777f))
+
 ## [0.9.0](https://github.com/haidj01/finly-backend/compare/v0.8.0...v0.9.0) (2026-05-14)
 
 
