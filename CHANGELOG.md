@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/haidj01/finly-backend/compare/v0.6.0...v0.7.0) (2026-05-13)
+
+
+### Features
+
+* add GET/PUT /api/market/trading-mode proxy routes ([0d505a4](https://github.com/haidj01/finly-backend/commit/0d505a499aac1e4f71e2b13ef64a1333593cae5c))
+* add GET/PUT /api/market/trading-mode proxy routes ([7ac1e8f](https://github.com/haidj01/finly-backend/commit/7ac1e8f6b7b9ca1529f371755e0f468304c6bf37))
+
 ## [0.6.0](https://github.com/haidj01/finly-backend/compare/v0.5.0...v0.6.0) (2026-05-13)
 
 
