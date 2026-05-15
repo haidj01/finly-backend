@@ -9,6 +9,11 @@ _AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
 DATA       = "https://data.alpaca.markets"
 
 
+def _agent_headers() -> dict:
+    token = os.getenv("FINLY_INTERNAL_TOKEN")
+    return {"X-Internal-Token": token} if token else {}
+
+
 def _data_headers():
     return {
         "APCA-API-KEY-ID":     os.environ["ALPACA_API_KEY"],
@@ -19,7 +24,7 @@ def _data_headers():
 @router.get("/account")
 async def get_account():
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(f"{_AGENT_URL}/api/alpaca/account")
+        res = await client.get(f"{_AGENT_URL}/api/alpaca/account", headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
     return res.json()
@@ -28,7 +33,7 @@ async def get_account():
 @router.get("/positions")
 async def get_positions():
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(f"{_AGENT_URL}/api/alpaca/positions")
+        res = await client.get(f"{_AGENT_URL}/api/alpaca/positions", headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
     return res.json()
@@ -108,6 +113,7 @@ async def get_orders(status: str = "all", limit: int = 20):
         res = await client.get(
             f"{_AGENT_URL}/api/alpaca/orders",
             params={"status": status, "limit": limit},
+            headers=_agent_headers(),
         )
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail=res.text)
@@ -118,7 +124,7 @@ async def get_orders(status: str = "all", limit: int = 20):
 async def place_order(request: Request):
     body = await request.json()
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.post(f"{_AGENT_URL}/api/alpaca/orders", json=body)
+        res = await client.post(f"{_AGENT_URL}/api/alpaca/orders", json=body, headers=_agent_headers())
     data = res.json()
     if res.status_code not in (200, 201):
         raise HTTPException(status_code=res.status_code, detail=data.get("detail", "주문 실패"))

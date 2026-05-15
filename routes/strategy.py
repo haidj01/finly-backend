@@ -6,10 +6,15 @@ router = APIRouter(prefix="/api/strategy")
 _AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
 
 
+def _agent_headers() -> dict:
+    token = os.getenv("FINLY_INTERNAL_TOKEN")
+    return {"X-Internal-Token": token} if token else {}
+
+
 @router.get("")
 async def list_strategies():
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(f"{_AGENT_URL}/api/strategy")
+        res = await client.get(f"{_AGENT_URL}/api/strategy", headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
@@ -19,7 +24,7 @@ async def list_strategies():
 async def create_strategy(request: Request):
     body = await request.json()
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.post(f"{_AGENT_URL}/api/strategy", json=body)
+        res = await client.post(f"{_AGENT_URL}/api/strategy", json=body, headers=_agent_headers())
     if res.status_code not in (200, 201):
         raise HTTPException(res.status_code, res.text)
     return res.json()
@@ -28,7 +33,7 @@ async def create_strategy(request: Request):
 @router.patch("/{sid}/toggle")
 async def toggle_strategy(sid: str):
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.patch(f"{_AGENT_URL}/api/strategy/{sid}/toggle")
+        res = await client.patch(f"{_AGENT_URL}/api/strategy/{sid}/toggle", headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
@@ -37,7 +42,7 @@ async def toggle_strategy(sid: str):
 @router.delete("/{sid}")
 async def delete_strategy(sid: str):
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.delete(f"{_AGENT_URL}/api/strategy/{sid}")
+        res = await client.delete(f"{_AGENT_URL}/api/strategy/{sid}", headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
@@ -47,7 +52,7 @@ async def delete_strategy(sid: str):
 async def get_trade_history(request: Request):
     params = dict(request.query_params)
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(f"{_AGENT_URL}/api/agent/trade-history", params=params)
+        res = await client.get(f"{_AGENT_URL}/api/agent/trade-history", params=params, headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
@@ -56,7 +61,7 @@ async def get_trade_history(request: Request):
 @router.get("/watchdog/status")
 async def get_watchdog_status():
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(f"{_AGENT_URL}/api/agent/watchdog/status")
+        res = await client.get(f"{_AGENT_URL}/api/agent/watchdog/status", headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
@@ -66,7 +71,7 @@ async def get_watchdog_status():
 async def update_watchdog_config(request: Request):
     body = await request.json()
     async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.post(f"{_AGENT_URL}/api/agent/watchdog/config", json=body)
+        res = await client.post(f"{_AGENT_URL}/api/agent/watchdog/config", json=body, headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
@@ -76,7 +81,7 @@ async def update_watchdog_config(request: Request):
 async def get_regime_recommendations(request: Request):
     params = dict(request.query_params)
     async with httpx.AsyncClient(timeout=90) as client:
-        res = await client.get(f"{_AGENT_URL}/api/agent/regime-recommendations", params=params)
+        res = await client.get(f"{_AGENT_URL}/api/agent/regime-recommendations", params=params, headers=_agent_headers())
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
