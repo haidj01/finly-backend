@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/haidj01/finly-backend/compare/v0.10.0...v0.10.1) (2026-05-15)
+
+
+### Bug Fixes
+
+* forward X-Internal-Token to all finly-agent proxy calls ([7544d95](https://github.com/haidj01/finly-backend/commit/7544d95128f936ad76de08dcdf2931b629d84a00))
+* forward X-Internal-Token to all finly-agent proxy calls ([fde470f](https://github.com/haidj01/finly-backend/commit/fde470f4c1697160fbd7a3f7b759256b89a5613d))
+
 ## [0.10.0](https://github.com/haidj01/finly-backend/compare/v0.9.0...v0.10.0) (2026-05-14)
 
 
