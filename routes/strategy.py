@@ -81,7 +81,11 @@ async def update_watchdog_config(request: Request):
 async def get_regime_recommendations(request: Request):
     params = dict(request.query_params)
     async with httpx.AsyncClient(timeout=90) as client:
-        res = await client.get(f"{_AGENT_URL}/api/agent/regime-recommendations", params=params, headers=_agent_headers())
+        res = await client.get(
+            f"{_AGENT_URL}/api/agent/regime-recommendations",
+            params=params,
+            headers=_agent_headers(),
+        )
     if res.status_code != 200:
         raise HTTPException(res.status_code, res.text)
     return res.json()
