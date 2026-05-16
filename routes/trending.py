@@ -21,6 +21,8 @@ EDGAR_ARCHIVES    = "https://www.sec.gov/Archives/edgar/data"
 CLAUDE_API_URL    = "https://api.anthropic.com/v1/messages"
 CLAUDE_MODEL      = "claude-sonnet-4-6"
 
+_AGENT_URL             = os.getenv("AGENT_URL", "http://localhost:8001")
+
 MIN_PRICE              = 5.0
 _CACHE_TTL_OPEN        = 300
 _CACHE_TTL_CLOSED      = 3600
@@ -31,6 +33,13 @@ _INSIDER_LOOKBACK_DAYS = 7
 _cache: dict     = {"data": None, "ts": 0}
 _fmp_cache: dict = {"profiles": {}, "screener": [], "ts": 0}
 _cik_cache: dict = {"map": {}, "ts": 0}
+
+_REGIME_PROMPT: dict[str, str] = {
+    "bearish":  "현재 시장 국면: 하락장(bearish). buy_pick 기준을 보수적으로 적용. 방어주·현금흐름 우수 종목 우선.",
+    "volatile": "현재 시장 국면: 변동성장(volatile). buy_pick 기준을 강화. 리스크 높은 종목은 false.",
+    "ranging":  "현재 시장 국면: 횡보장(ranging). 기존 기준 적용.",
+    "trending": "현재 시장 국면: 추세장(trending). 강한 모멘텀 종목은 buy_pick=true 적극 고려.",
+}
 
 _SECTOR_PE: dict[str, float] = {
     "Technology":              28.0,
@@ -74,6 +83,34 @@ def _claude_headers():
 
 def _fmp_api_key() -> str:
     return os.environ.get("FMP_API_KEY", "")
+
+
+# ── Step 0: 시장 국면 조회 ───────────────────────────────────────────────────
+
+async def _fetch_regime() -> str:
+    """finly-agent에서 현재 시장 국면 조회. 실패 시 'ranging' 반환."""
+    try:
+        token = os.environ.get("FINLY_INTERNAL_TOKEN")
+        headers = {"X-Internal-Token": token} if token else {}
+        async with httpx.AsyncClient(timeout=5) as client:
+            res = await client.get(f"{_AGENT_URL}/market/regime", headers=headers)
+        if res.status_code == 200:
+            return res.json().get("regime", "ranging")
+    except Exception as e:
+        print(f"[Regime] 에이전트 호출 실패 — ranging 폴백: {e}")
+    return "ranging"
+
+
+def _apply_regime_filter(candidates: list[dict], regime: str) -> list[dict]:
+    """국면별 후보군 필터링.
+    bearish:  하락 종목(chg_pct < -1%) 제거 — 하락장에서 낙주 추천 방지.
+    volatile: 극단 변동 종목(|chg_pct| > 7%) 제거 — 예측 불가 구간 배제.
+    """
+    if regime == "bearish":
+        return [s for s in candidates if float(s.get("percent_change", 0) or 0) >= -1.0]
+    if regime == "volatile":
+        return [s for s in candidates if abs(float(s.get("percent_change", 0) or 0)) <= 7.0]
+    return candidates
 
 
 # ── Step 1a: Alpaca 후보군 수집 ───────────────────────────────────────────────
@@ -536,12 +573,13 @@ def _build_stock_line(s: dict, fmp_map: dict, news_map: dict) -> str:
 
 
 async def _analyze(
-    stocks: list[dict], fmp_map: dict, news_map: dict
+    stocks: list[dict], fmp_map: dict, news_map: dict, regime: str = "ranging"
 ) -> dict[str, dict]:
     if not stocks:
         return {}
 
     lines = [_build_stock_line(s, fmp_map, news_map) for s in stocks]
+    regime_instruction = _REGIME_PROMPT.get(regime, _REGIME_PROMPT["ranging"])
 
     syms   = ", ".join(s["symbol"] for s in stocks)
     prompt = (
@@ -554,7 +592,8 @@ async def _analyze(
         "confidence=1추측/2간접정보/3명확근거(FMP수치있으면3가능), "
         "analyst=제공된PE·DCF·섹터 기준 매수/중립/매도, "
         "growth=EPS또는매출성장률(모르면null), "
-        "buy_pick=confidence>=2이고 긍정모멘텀이고 저평가신호있으면true (전체30~50%만true)"
+        f"buy_pick=confidence>=2이고 긍정모멘텀이고 저평가신호있으면true (전체30~50%만true). "
+        f"{regime_instruction}"
     )
     body = {
         "model":      CLAUDE_MODEL,
@@ -641,8 +680,9 @@ async def get_trending():  # pylint: disable=too-many-locals
     if _cache["data"] and now - _cache["ts"] < ttl:
         return _cache["data"]
 
-    # Step 1: 후보군 수집 + CIK 맵 병렬 로드
-    (actives_raw, (gainers_raw, losers_raw), cik_map) = await asyncio.gather(
+    # Step 0 + Step 1: 국면 조회 + 후보군 수집 병렬
+    (regime, actives_raw, (gainers_raw, losers_raw), cik_map) = await asyncio.gather(
+        _fetch_regime(),
         _fetch_most_actives(20),
         _fetch_movers(10),
         _load_cik_map(),
@@ -670,6 +710,9 @@ async def get_trending():  # pylint: disable=too-many-locals
         fmp_profiles.update(extra)
 
     all_candidates = alpaca_candidates + fmp_screener_new
+
+    # Step 1.5: 국면 기반 후보군 필터링
+    all_candidates = _apply_regime_filter(all_candidates, regime)
     all_syms       = list({s["symbol"] for s in all_candidates})
 
     # Step 1c~1e + Step 2: 보조 데이터 병렬 수집
@@ -709,8 +752,8 @@ async def get_trending():  # pylint: disable=too-many-locals
             return "gainer"
         return "loser"
 
-    # Step 4: Claude 분석 (뉴스 컨텍스트 포함)
-    reason_map = await _analyze(top10, fmp_profiles, news_map)
+    # Step 4: Claude 분석 (국면 컨텍스트 포함)
+    reason_map = await _analyze(top10, fmp_profiles, news_map, regime)
 
     ctx = {"flow": flow_map, "insider": insider_map, "news": news_map}
     all_normalized = [
@@ -719,7 +762,7 @@ async def get_trending():  # pylint: disable=too-many-locals
     ]
     picks = [s for s in all_normalized if s["buy_pick"]]
 
-    result = {"picks": picks}
+    result = {"picks": picks, "regime": regime}
     _cache["data"] = result
     _cache["ts"]   = now
     return result
