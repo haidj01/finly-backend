@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.11.0](https://github.com/haidj01/finly-backend/compare/v0.10.1...v0.11.0) (2026-05-18)
+
+
+### Features
+
+* add engine status/config proxy endpoints ([9648e5c](https://github.com/haidj01/finly-backend/commit/9648e5c622d53a863737aadc66df4361f5902754))
+* integrate market regime into trending recommendation pipeline ([2b2ec94](https://github.com/haidj01/finly-backend/commit/2b2ec947bb58873bad2e2d52557484e997a55e2b))
+* integrate market regime into trending stock recommendation pipeline ([0efd955](https://github.com/haidj01/finly-backend/commit/0efd95562e056df4747fdaa595e672ffadb17b7d))
+* **strategy:** add engine status/config proxy endpoints ([8bf93a8](https://github.com/haidj01/finly-backend/commit/8bf93a8262b4944ee438a85843526f0875366f25))
+* **watchlist:** add watchlist table, CRUD API, and strategy guard ([d76c1b8](https://github.com/haidj01/finly-backend/commit/d76c1b8a55b7158076d123db95f829f875017165))
+* **watchlist:** add watchlist table, CRUD API, and strategy guard ([3eee3e1](https://github.com/haidj01/finly-backend/commit/3eee3e139ca696548f9055055c8c99a5078dfe3a))
+
+
+### Bug Fixes
+
+* **lint:** suppress invalid-name and global-statement in db.py (C0103, W0603) ([f6f5176](https://github.com/haidj01/finly-backend/commit/f6f5176cc77c4b9d1c37c3e7edc10588aa00a735))
+
 ## [0.10.1](https://github.com/haidj01/finly-backend/compare/v0.10.0...v0.10.1) (2026-05-15)
 
 
