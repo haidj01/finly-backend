@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0](https://github.com/haidj01/finly-backend/compare/v0.11.0...v0.12.0) (2026-05-18)
+
+
+### Features
+
+* **alpaca:** add /stats/{sym} endpoint for 52-week high/low and 20-day avg volume ([07de88e](https://github.com/haidj01/finly-backend/commit/07de88ee37fd4b1c28b4c4970b0dc59f10126463))
+* **alpaca:** add /stats/{sym} endpoint for 52-week high/low and 20-day avg volume ([fa00c62](https://github.com/haidj01/finly-backend/commit/fa00c625a95223ae6a9fc6760671b3cfc4325975))
+
 ## [0.11.0](https://github.com/haidj01/finly-backend/compare/v0.10.1...v0.11.0) (2026-05-18)
 
 
