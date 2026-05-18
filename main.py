@@ -1,5 +1,7 @@
 import os
 import pathlib
+from contextlib import asynccontextmanager
+
 import httpx
 from dotenv import load_dotenv
 load_dotenv()
@@ -9,15 +11,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from jose import jwt, JWTError
 
-from routes.claude    import router as claude_router
-from routes.alpaca    import router as alpaca_router
-from routes.news      import router as news_router
-from routes.trending  import router as trending_router
-from routes.auth      import router as auth_router
-from routes.strategy  import router as strategy_router
-from routes.market    import router as market_router
+from db import init_db
+from routes.claude     import router as claude_router
+from routes.alpaca     import router as alpaca_router
+from routes.news       import router as news_router
+from routes.trending   import router as trending_router
+from routes.auth       import router as auth_router
+from routes.strategy   import router as strategy_router
+from routes.market     import router as market_router
+from routes.watchlist  import router as watchlist_router
 
-app = FastAPI(title="Finly Backend")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await init_db()
+    yield
+
+
+app = FastAPI(title="Finly Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,6 +77,7 @@ app.include_router(news_router)
 app.include_router(trending_router)
 app.include_router(strategy_router)
 app.include_router(market_router)
+app.include_router(watchlist_router)
 
 
 @app.get("/health")

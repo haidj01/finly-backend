@@ -1,6 +1,7 @@
 import os
 import httpx
 from fastapi import APIRouter, HTTPException, Request
+from db import get_pool
 
 router = APIRouter(prefix="/api/strategy")
 _AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
@@ -23,6 +24,23 @@ async def list_strategies():
 @router.post("")
 async def create_strategy(request: Request):
     body = await request.json()
+    symbol = (body.get("symbol") or "").upper().strip()
+    if symbol:
+        try:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT symbol FROM watchlist WHERE symbol = $1 AND active = TRUE",
+                    symbol,
+                )
+            if not row:
+                raise HTTPException(
+                    400,
+                    f"{symbol}은(는) watchlist에 등록되지 않은 종목입니다. "
+                    "먼저 watchlist에 추가하세요.",
+                )
+        except RuntimeError:
+            pass  # DATABASE_URL 미설정 시 검증 스킵
     async with httpx.AsyncClient(timeout=10) as client:
         res = await client.post(f"{_AGENT_URL}/api/strategy", json=body, headers=_agent_headers())
     if res.status_code not in (200, 201):
