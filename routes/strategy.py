@@ -95,6 +95,25 @@ async def update_watchdog_config(request: Request):
     return res.json()
 
 
+@router.get("/engine/status")
+async def get_engine_status():
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.get(f"{_AGENT_URL}/api/agent/engine/status", headers=_agent_headers())
+    if res.status_code != 200:
+        raise HTTPException(res.status_code, res.text)
+    return res.json()
+
+
+@router.post("/engine/config")
+async def update_engine_config(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.post(f"{_AGENT_URL}/api/agent/engine/config", json=body, headers=_agent_headers())
+    if res.status_code != 200:
+        raise HTTPException(res.status_code, res.text)
+    return res.json()
+
+
 @router.get("/regime-recommendations")
 async def get_regime_recommendations(request: Request):
     params = dict(request.query_params)
