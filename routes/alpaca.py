@@ -107,6 +107,32 @@ async def get_bars(sym: str, period: str = "1M"):
     return res.json().get("bars") or []
 
 
+@router.get("/stats/{sym}")
+async def get_stock_stats(sym: str):
+    """52주 고가/저가 + 20일 평균 거래량 반환."""
+    start = (datetime.now(timezone.utc) - timedelta(days=365)).strftime("%Y-%m-%d")
+    async with httpx.AsyncClient(timeout=15) as client:
+        res = await client.get(
+            f"{DATA}/v2/stocks/{sym.upper()}/bars",
+            params={"timeframe": "1Day", "start": start, "feed": "iex", "adjustment": "raw"},
+            headers=_data_headers(),
+        )
+    if res.status_code != 200:
+        raise HTTPException(status_code=res.status_code, detail=res.text)
+    bars = res.json().get("bars") or []
+    if not bars:
+        raise HTTPException(status_code=404, detail=f"{sym} 데이터 없음")
+    highs   = [b["h"] for b in bars]
+    lows    = [b["l"] for b in bars]
+    volumes = [b["v"] for b in bars]
+    avg_vol = sum(volumes[-20:]) / len(volumes[-20:]) if volumes else 0
+    return {
+        "week52_high": max(highs),
+        "week52_low":  min(lows),
+        "avg_vol_20d": round(avg_vol),
+    }
+
+
 @router.get("/orders")
 async def get_orders(status: str = "all", limit: int = 20):
     async with httpx.AsyncClient(timeout=10) as client:
