@@ -1,11 +1,11 @@
 import os
 import asyncpg
 
-_pool = None
+_pool = None  # pylint: disable=invalid-name
 
 
 async def get_pool() -> asyncpg.Pool:
-    global _pool
+    global _pool  # pylint: disable=global-statement
     if _pool is None:
         url = os.getenv("DATABASE_URL")
         if not url:
