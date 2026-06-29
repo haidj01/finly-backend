@@ -72,6 +72,7 @@ TOTP_SECRET=$(aws ssm get-parameter --name "/finly/TOTP_SECRET" --with-decryptio
 ALPACA_LIVE_KEY=$(get_secret "finly/ALPACA_LIVE_KEY")
 ALPACA_LIVE_SECRET=$(get_secret "finly/ALPACA_LIVE_SECRET")
 ALPACA_MODE=$(get_param "/finly/ALPACA_MODE" 2>/dev/null || echo "paper")
+FRED_API_KEY=$(get_param "/finly/FRED_API_KEY")
 
 # ── Docker Compose 설정 ───────────────────────────────────
 mkdir -p /opt/finly
@@ -134,6 +135,7 @@ services:
       - ALPACA_LIVE_KEY=$ALPACA_LIVE_KEY
       - ALPACA_LIVE_SECRET=$ALPACA_LIVE_SECRET
       - ALPACA_MODE=$ALPACA_MODE
+      - FRED_API_KEY=$FRED_API_KEY
 
 volumes:
   pgdata:
