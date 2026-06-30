@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/news")
 
 DATA           = "https://data.alpaca.markets"
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
-CLAUDE_MODEL   = "claude-sonnet-4-20250514"
+CLAUDE_MODEL   = "claude-sonnet-4-6"
 
 
 def _alpaca_headers():
