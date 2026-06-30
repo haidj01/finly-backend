@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.13.0](https://github.com/haidj01/finly-backend/compare/v0.12.0...v0.13.0) (2026-06-30)
+
+
+### Features
+
+* **infra:** add FRED_API_KEY to EC2 userdata and finly-agent environment ([be9efe8](https://github.com/haidj01/finly-backend/commit/be9efe8d6e82c253d0c96a3f7752da3dc5cbb8a8))
+* **infra:** FRED_API_KEY SSM 연동 및 finly-agent 컨테이너 환경변수 주입 ([6d97827](https://github.com/haidj01/finly-backend/commit/6d97827d09c7ce3df22c3b83fd578483ec208031))
+
+
+### Bug Fixes
+
+* **claude:** correct model ID from claude-sonnet-4-20250514 to claude-sonnet-4-6 ([921c440](https://github.com/haidj01/finly-backend/commit/921c4408e4c07c874c4778bc8aefea63d8b8faea))
+* **claude:** correct model ID to claude-sonnet-4-6 ([9ab1537](https://github.com/haidj01/finly-backend/commit/9ab1537d7afc1ab5fb1d8ef4efdcd13a8da9c6c1))
+
 ## [0.12.0](https://github.com/haidj01/finly-backend/compare/v0.11.0...v0.12.0) (2026-05-18)
 
 
